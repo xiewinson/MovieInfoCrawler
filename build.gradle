@@ -31,6 +31,8 @@ dependencies {
     compile 'com.squareup.retrofit2:retrofit:2.3.0'
     compile 'org.jsoup:jsoup:1.11.2'
     compile group: 'org.apache.poi', name: 'poi-ooxml', version: '3.17'
+    compile group: 'com.google.code.gson', name: 'gson', version: '1.7.2'
+
 }
 
 compileKotlin {
