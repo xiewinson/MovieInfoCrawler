@@ -1,11 +1,10 @@
 package io.github.xiewinson.movieinfocrawler.crawler
 
 import io.github.xiewinson.movieinfocrawler.manager.OkHttpManager
-import io.github.xiewinson.movieinfocrawler.model.douban.DoubanMovie
 import io.github.xiewinson.movieinfocrawler.util.CrawlerExecutors
 import io.github.xiewinson.movieinfocrawler.util.FileUtil
-import io.github.xiewinson.movieinfocrawler.util.GsonUtil
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import org.jsoup.Jsoup
 import java.util.concurrent.CountDownLatch
 
 class ImdbCrawler : ICrawler {
@@ -20,7 +19,11 @@ class ImdbCrawler : ICrawler {
             "Name",
             "Url",
             "Rating",
-            "Genre"
+            "Genre",
+            "Country",
+            "Cumulative Worldwide Gross",
+            "Gross USA",
+            "Plot Keywords"
     )
     val tomatoSheet = XSSFWorkbook(FileUtil.tomatoFile()).getSheetAt(0)
 
@@ -41,7 +44,7 @@ class ImdbCrawler : ICrawler {
             CrawlerExecutors.fixedExecute {
                 println("正在抓IMDB电影:${index}/${tomatoSheet.physicalNumberOfRows - 1}")
                 try {
-                    handle(movieName, index, tomatoSheet.physicalNumberOfRows - 1)
+                    handle(movieName, index)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {
@@ -57,22 +60,70 @@ class ImdbCrawler : ICrawler {
 
     }
 
-    private fun handle(movieName: String, index: Int, count: Int) {
+    private fun handle(movieName: String, index: Int) {
+//        if (index > 1) return
         if (movieName.isEmpty()) return
-        val result = OkHttpManager.searchMovieByDouban(movieName)
-        val doubanMovie = GsonUtil.gson.fromJson(result, DoubanMovie::class.java)
-        val hasData = doubanMovie?.subjects != null && doubanMovie.subjects.isNotEmpty()
+
+        val qHtml = OkHttpManager.searchMovieByImdb(movieName)
+        val a = Jsoup
+                .parse(qHtml)
+                .select("table.findList tr")
+                .first()
+                .select("td.result_text a")
+
+        val url = OkHttpManager.IMDB_HOST + a.attr("href")
+        val jsoup = Jsoup.parse(OkHttpManager.get(url))
+
         synchronized(DoubanCrawler::class.java) {
             val row = sheet.createRow(index)
             row.createCell(0).setCellValue(movieName)
-            if (hasData) {
-                val first = doubanMovie.subjects.first()
-                row.createCell(1).setCellValue(first.title)
-                row.createCell(2).setCellValue(first.alt)
-                row.createCell(3).setCellValue("${first.rating.average}/${first.rating.max}")
-                row.createCell(4).setCellValue(first.genres.toString().replace("[", "").replace("]", ""))
-            }
+            //Name
+            row.createCell(1).setCellValue(
+                    jsoup.select("div.title_wrapper h1")
+                            .text()
+                            .replace("(2016)", ""))
+
+            //Url
+            row.createCell(2).setCellValue(url)
+
+            //Rating
+            row.createCell(3).setCellValue(
+                    jsoup.select("div.ratingValue span").text().replace(" ", "")
+            )
+
+            //Genre
+            row.createCell(4).setCellValue(
+                    jsoup.select("h4:contains(Genres:)").next().text()
+            )
+
+            //Country
+            row.createCell(5).setCellValue(
+                    jsoup.select("h4:contains(Country:)").next().text()
+            )
+
+            //Gross USA
+            row.createCell(6).setCellValue(
+                    jsoup.select("h4:contains(Gross USA:)")
+                            .first()
+                            .parent()
+                            .text()
+                            .replace("Gross USA: ", "")
+            )
+
+            //Cumulative Worldwide Gross
+            row.createCell(7).setCellValue(
+                    jsoup.select("h4:contains(Cumulative Worldwide Gross:)")
+                            .first()
+                            .parent()
+                            .text()
+                            .replace("Cumulative Worldwide Gross: ", "")
+            )
+
+            //Plot Keywords
+            row.createCell(8).setCellValue(
+                    jsoup.select("div[itemprop=keywords] > a").text()
+            )
+
         }
-        println(doubanMovie.toString())
     }
 }

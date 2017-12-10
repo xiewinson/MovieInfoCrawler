@@ -10,6 +10,8 @@ class OkHttpManager {
         val TOMATO_HOST = "https://www.rottentomatoes.com"
         val TOMATO_2016 = TOMATO_HOST + "/top/bestofrt/?year=2016"
 
+        val IMDB_HOST = "http://www.imdb.com"
+
         var client = OkHttpClient.Builder().build()
 
         fun request(req: Request): Response {
@@ -32,6 +34,11 @@ class OkHttpManager {
         fun searchMovieByDouban(name: String): String? {
             return get("https://api.douban.com/v2/movie/search?q=$name")
         }
+
+        fun searchMovieByImdb(name: String): String? {
+            return get("$IMDB_HOST/find?q=$name&s=tt")
+        }
+
     }
 
 }

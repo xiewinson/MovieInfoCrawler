@@ -41,7 +41,7 @@ class DoubanCrawler : ICrawler {
             CrawlerExecutors.fixedExecute {
                 println("正在抓豆瓣电影:${index}/${tomatoSheet.physicalNumberOfRows - 1}")
                 try {
-                    handle(movieName, index, tomatoSheet.physicalNumberOfRows - 1)
+                    handle(movieName, index)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {
@@ -57,7 +57,7 @@ class DoubanCrawler : ICrawler {
 
     }
 
-    private fun handle(movieName: String, index: Int, count: Int) {
+    private fun handle(movieName: String, index: Int) {
         if (movieName.isEmpty()) return
         val result = OkHttpManager.searchMovieByDouban(movieName)
         val doubanMovie = GsonUtil.gson.fromJson(result, DoubanMovie::class.java)
